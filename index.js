@@ -10,7 +10,9 @@ import {
   signOut,
   onAuthStateChanged,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  setPersistence,           // 新增
+  browserLocalPersistence   // 新增：解決 iOS Safari 阻擋問題
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   getFirestore,
@@ -47,8 +49,18 @@ const authManager = {
   syncMeta: { updatedAt: null },
   loading: false,
 
-  init() {
+  async init() { // 改為 async 以便等待持久性設定
     this.bindUI();
+    
+    // --- 關鍵修復：強制設定 iOS 可用的持久性儲存 ---
+    try {
+      await setPersistence(this.auth, browserLocalPersistence);
+      console.log("Firebase Persistence set to LOCAL (iOS Fix)");
+    } catch (err) {
+      console.error("設定持久性失敗:", err);
+    }
+    // -------------------------------------------
+
     this.handleRedirectResult();
     onAuthStateChanged(this.auth, (user) => {
       this.currentUser = user;
@@ -75,6 +87,7 @@ const authManager = {
       }
     } catch (err) {
       console.warn("redirect login failed", err);
+      // 如果是 redirect 登入失敗，通常不需要顯示給使用者，除非是嚴重錯誤
     }
   },
 
@@ -137,6 +150,8 @@ const authManager = {
     }
     try {
       this.setLoading(true);
+      // 確保註冊時也使用正確的持久性設定
+      await setPersistence(this.auth, browserLocalPersistence);
       await createUserWithEmailAndPassword(this.auth, email, password);
       this.showMessage("註冊成功，已自動登入", false);
       await this.sendVerificationEmail();
@@ -157,6 +172,8 @@ const authManager = {
     }
     try {
       this.setLoading(true);
+      // 確保登入時也使用正確的持久性設定
+      await setPersistence(this.auth, browserLocalPersistence);
       await signInWithEmailAndPassword(this.auth, email, password);
       this.showMessage("登入成功", false);
       this.checkEmailVerification();
@@ -169,20 +186,33 @@ const authManager = {
 
   async handleGoogle() {
     if (this.loading) return;
+    
+    // --- 偵測 iOS 或 PWA 模式 ---
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    const useRedirect = isIOS || isStandalone;
+
     try {
       this.setLoading(true);
-      if (isStandalone) {
+      
+      // 確保 Google 登入前設定持久性
+      await setPersistence(this.auth, browserLocalPersistence);
+
+      if (useRedirect) {
+        // iOS / PWA 模式：強制使用 Redirect 避免白屏
         await signInWithRedirect(this.auth, this.provider);
+        // 注意：這裡不需要 setLoading(false)，因為頁面會跳轉
       } else {
+        // 電腦版 / 普通瀏覽器：使用 Popup 體驗較好
         await signInWithPopup(this.auth, this.provider);
         this.showMessage("已使用 Google 登入", false);
         this.checkEmailVerification();
+        this.setLoading(false);
       }
     } catch (err) {
+      console.error(err);
       this.showMessage(err?.message || "Google 登入失敗");
-    } finally {
-      this.setLoading(false);
+      this.setLoading(false); // 只有出錯才關閉 Loading
     }
   },
 
