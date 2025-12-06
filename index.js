@@ -321,7 +321,7 @@ const authManager = {
     }
   },
 
-  async syncUpload() {
+ async syncUpload() {
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
       return;
@@ -331,18 +331,30 @@ const authManager = {
       return;
     }
     try {
+      this.setLoading(true); // <--- (1) 開始載入視覺回饋
+      
+      // --- 關鍵修復：清洗資料，避免 Firestore 序列化錯誤 ---
+      // IndexedDB 的資料可能含有無法直接上傳的物件引用，這個步驟將其轉為純粹 JSON
+      const cleanData = JSON.parse(JSON.stringify(window.store.data)); 
+
       const payload = {
-        vehicles: window.store.data.vehicles || [],
-        logs: window.store.data.logs || [],
-        settings: window.store.data.settings || {},
+        vehicles: cleanData.vehicles || [],
+        logs: cleanData.logs || [],
+        settings: cleanData.settings || {},
         updatedAt: Date.now()
       };
+      
       await setDoc(doc(this.db, "userData", this.currentUser.uid), payload, { merge: true });
+      
       this.syncMeta = { updatedAt: payload.updatedAt };
       this.showMessage("已上傳並同步雲端", false);
       if (window.ui) window.ui.render();
     } catch (err) {
+      // --- (2) 記錄確切錯誤，供除錯 ---
+      console.error("Firestore Sync Upload Error:", err); 
       this.showMessage(err?.message || "上傳同步失敗");
+    } finally {
+      this.setLoading(false); // <--- (1) 結束載入視覺回饋
     }
   },
 
@@ -356,6 +368,7 @@ const authManager = {
       return;
     }
     try {
+      this.setLoading(true); // <--- 開始載入
       const snap = await getDoc(doc(this.db, "userData", this.currentUser.uid));
       if (!snap.exists()) {
         this.showMessage("雲端尚無資料，請先上傳", true);
@@ -372,10 +385,12 @@ const authManager = {
       this.showMessage("已從雲端下載並同步", false);
       if (window.ui) window.ui.render();
     } catch (err) {
+      console.error("Firestore Sync Download Error:", err); // <--- 記錄錯誤
       this.showMessage(err?.message || "下載同步失敗");
+    } finally {
+      this.setLoading(false); // <--- 結束載入
     }
   }
-};
 
 window.authManager = authManager;
 window.authState = authState;
