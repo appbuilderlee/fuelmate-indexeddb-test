@@ -11,8 +11,8 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
-  setPersistence,           // 新增
-  browserLocalPersistence   // 新增：解決 iOS Safari 阻擋問題
+  setPersistence,           
+  browserLocalPersistence   
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   getFirestore,
@@ -60,7 +60,6 @@ const authManager = {
       console.error("2. 設定持久性失敗:", err);
     }
 
-    // 處理 Redirect 回來的結果
     this.handleRedirectResult();
 
     console.log("3. 開始監聽登入狀態...");
@@ -69,7 +68,7 @@ const authManager = {
       
       this.currentUser = user;
       authState.user = user;
-      this.toggleScreens(!!user); // 切換畫面
+      this.toggleScreens(!!user); 
 
       if (user) {
         this.showMessage("");
@@ -92,7 +91,6 @@ const authManager = {
       }
     } catch (err) {
       console.warn("redirect login failed", err);
-      // 如果是 redirect 登入失敗，通常不需要顯示給使用者，除非是嚴重錯誤
     }
   },
 
@@ -119,7 +117,17 @@ const authManager = {
 
   setLoading(isLoading) {
     this.loading = isLoading;
-    ["signup-btn", "login-btn", "google-btn"].forEach((id) => {
+    
+    // 修正：增加雲端同步按鈕的 ID
+    const buttonIds = [
+        "signup-btn", 
+        "login-btn", 
+        "google-btn",
+        "sync-upload-btn", 
+        "sync-download-btn"
+    ];
+
+    buttonIds.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
       el.disabled = isLoading;
@@ -155,12 +163,15 @@ const authManager = {
     }
     try {
       this.setLoading(true);
-      // 確保註冊時也使用正確的持久性設定
+      this.showMessage("正在處理註冊請求...", false);
+      
       await setPersistence(this.auth, browserLocalPersistence);
       await createUserWithEmailAndPassword(this.auth, email, password);
+      
       this.showMessage("註冊成功，已自動登入", false);
       await this.sendVerificationEmail();
     } catch (err) {
+      console.error("Signup Error:", err);
       this.showMessage(err?.message || "註冊失敗");
     } finally {
       this.setLoading(false);
@@ -168,7 +179,7 @@ const authManager = {
   },
 
   async handleLogin() {
-    console.log("--- 1. 登入按鈕被點擊 ---"); // <--- 偵錯點 A
+    console.log("--- 1. 登入按鈕被點擊 ---"); 
     if (this.loading) {
       console.warn("登入已被跳過：系統正在處理中。");
       return;
@@ -178,25 +189,27 @@ const authManager = {
     
     if (!email || !password) {
       this.showMessage("請輸入 Email 與密碼");
-      console.error("--- 2. 登入被阻擋：Email 或密碼為空。 ---"); // <--- 偵錯點 B
+      console.error("--- 2. 登入被阻擋：Email 或密碼為空。 ---"); 
       return;
     }
     
     try {
-      console.log("--- 3. 欄位檢查成功，準備載入 ---"); // <--- 偵錯點 C
+      console.log("--- 3. 欄位檢查成功，準備載入 ---"); 
       this.setLoading(true);
       
-      // 確保登入時也使用正確的持久性設定 (不變)
+      // 修正：加入即時訊息，解決無反應的視覺問題
+      this.showMessage("正在處理登入請求...", false);
+      
       await setPersistence(this.auth, browserLocalPersistence);
       
-      console.log("--- 4. 發送 Firebase 登入請求 ---"); // <--- 偵錯點 D
+      console.log("--- 4. 發送 Firebase 登入請求 ---"); 
       await signInWithEmailAndPassword(this.auth, email, password);
       
-      this.showMessage("登入成功", false);
+      // onAuthStateChanged 會接管後續的 UI 渲染
       this.checkEmailVerification();
       
     } catch (err) {
-      console.error("--- 5. 登入失敗！錯誤訊息：", err); // <--- 偵錯點 E
+      console.error("--- 5. 登入失敗！錯誤訊息：", err); 
       this.showMessage(err?.message || "登入失敗");
     } finally {
       this.setLoading(false);
@@ -206,23 +219,19 @@ const authManager = {
   async handleGoogle() {
     if (this.loading) return;
     
-    // --- 偵測 iOS 或 PWA 模式 ---
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const useRedirect = isIOS || isStandalone;
 
     try {
       this.setLoading(true);
-      
-      // 確保 Google 登入前設定持久性
+      this.showMessage("正在處理 Google 登入...", false);
+
       await setPersistence(this.auth, browserLocalPersistence);
 
       if (useRedirect) {
-        // iOS / PWA 模式：強制使用 Redirect 避免白屏
         await signInWithRedirect(this.auth, this.provider);
-        // 注意：這裡不需要 setLoading(false)，因為頁面會跳轉
       } else {
-        // 電腦版 / 普通瀏覽器：使用 Popup 體驗較好
         await signInWithPopup(this.auth, this.provider);
         this.showMessage("已使用 Google 登入", false);
         this.checkEmailVerification();
@@ -231,7 +240,7 @@ const authManager = {
     } catch (err) {
       console.error(err);
       this.showMessage(err?.message || "Google 登入失敗");
-      this.setLoading(false); // 只有出錯才關閉 Loading
+      this.setLoading(false); 
     }
   },
 
@@ -245,6 +254,7 @@ const authManager = {
       await sendPasswordResetEmail(this.auth, email);
       this.showMessage("重設密碼信已寄出，請查收", false);
     } catch (err) {
+      console.error("Reset Password Error:", err);
       this.showMessage(err?.message || "重設密碼失敗");
     }
   },
@@ -258,6 +268,7 @@ const authManager = {
       await sendEmailVerification(this.auth.currentUser);
       this.showMessage("驗證郵件已寄出，請查收", false);
     } catch (err) {
+      console.error("Verify Email Error:", err);
       this.showMessage(err?.message || "驗證信寄送失敗");
     }
   },
@@ -280,6 +291,7 @@ const authManager = {
       await signOut(this.auth);
       this.showMessage("已登出", false);
     } catch (err) {
+      console.error("Sign Out Error:", err);
       this.showMessage(err?.message || "登出失敗");
     }
   },
@@ -306,6 +318,7 @@ const authManager = {
         this.showMessage("尚未建立設定，請先儲存", false);
       }
     } catch (err) {
+      console.error("Load Settings Error:", err);
       this.showMessage(err?.message || "讀取設定失敗");
     }
   },
@@ -331,6 +344,7 @@ const authManager = {
       this.showMessage("設定已儲存到 Firestore", false);
       if (window.ui) window.ui.render();
     } catch (err) {
+      console.error("Save Settings Error:", err);
       this.showMessage(err?.message || "儲存失敗");
     }
   },
@@ -345,10 +359,9 @@ const authManager = {
       return;
     }
     try {
-      this.setLoading(true); // <--- (1) 開始載入視覺回饋
+      this.setLoading(true); 
       
-      // --- 關鍵修復：清洗資料，避免 Firestore 序列化錯誤 ---
-      // IndexedDB 的資料可能含有無法直接上傳的物件引用，這個步驟將其轉為純粹 JSON
+      // 修復：關鍵的資料清洗步驟，解決序列化錯誤
       const cleanData = JSON.parse(JSON.stringify(window.store.data)); 
 
       const payload = {
@@ -364,11 +377,10 @@ const authManager = {
       this.showMessage("已上傳並同步雲端", false);
       if (window.ui) window.ui.render();
     } catch (err) {
-      // --- (2) 記錄確切錯誤，供除錯 ---
       console.error("Firestore Sync Upload Error:", err); 
       this.showMessage(err?.message || "上傳同步失敗");
     } finally {
-      this.setLoading(false); // <--- (1) 結束載入視覺回饋
+      this.setLoading(false); 
     }
   },
 
@@ -382,7 +394,7 @@ const authManager = {
       return;
     }
     try {
-      this.setLoading(true); // <--- 開始載入
+      this.setLoading(true); 
       const snap = await getDoc(doc(this.db, "userData", this.currentUser.uid));
       if (!snap.exists()) {
         this.showMessage("雲端尚無資料，請先上傳", true);
@@ -399,12 +411,13 @@ const authManager = {
       this.showMessage("已從雲端下載並同步", false);
       if (window.ui) window.ui.render();
     } catch (err) {
-      console.error("Firestore Sync Download Error:", err); // <--- 記錄錯誤
+      console.error("Firestore Sync Download Error:", err); 
       this.showMessage(err?.message || "下載同步失敗");
     } finally {
-      this.setLoading(false); // <--- 結束載入
+      this.setLoading(false); 
     }
   }
+}; // <--- 這裡是物件結尾！
 
 window.authManager = authManager;
 window.authState = authState;

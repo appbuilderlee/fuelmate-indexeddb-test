@@ -1269,8 +1269,8 @@ END:VCALENDAR`;
                                     <button onclick="window.authManager?.sendVerificationEmail()" class="text-teal-600 font-bold underline text-[11px]">重送驗證信</button>
                                 </div>
                                 <div class="flex items-center gap-3 pt-1">
-                                    <button onclick="window.authManager?.syncUpload()" class="flex-1 bg-blue-600 text-white text-sm font-bold py-3 rounded-xl shadow">上傳本機 → 雲端</button>
-                                    <button onclick="window.authManager?.syncDownload()" class="flex-1 bg-slate-200 dark:bg-slate-700 text-sm font-bold py-3 rounded-xl">下載雲端 → 本機</button>
+                                    <button id="sync-upload-btn" onclick="window.authManager?.syncUpload()" class="flex-1 bg-blue-600 text-white text-sm font-bold py-3 rounded-xl shadow">上傳本機 → 雲端</button>
+                                    <button id="sync-download-btn" onclick="window.authManager?.syncDownload()" class="flex-1 bg-slate-200 dark:bg-slate-700 text-sm font-bold py-3 rounded-xl">下載雲端 → 本機</button>
                                 </div>
                                 <div class="text-[11px] theme-text-sub">雲端同步時間：${authManager?.syncMeta?.updatedAt ? new Date(authManager.syncMeta.updatedAt).toLocaleString() : '尚未同步'}</div>
                             </div>
