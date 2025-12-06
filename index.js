@@ -49,23 +49,28 @@ const authManager = {
   syncMeta: { updatedAt: null },
   loading: false,
 
-  async init() { // 改為 async 以便等待持久性設定
+  async init() {
+    console.log("1. 應用程式啟動..."); 
     this.bindUI();
     
-    // --- 關鍵修復：強制設定 iOS 可用的持久性儲存 ---
     try {
       await setPersistence(this.auth, browserLocalPersistence);
-      console.log("Firebase Persistence set to LOCAL (iOS Fix)");
+      console.log("2. Firebase 持久性設定成功 (iOS Fix)");
     } catch (err) {
-      console.error("設定持久性失敗:", err);
+      console.error("2. 設定持久性失敗:", err);
     }
-    // -------------------------------------------
 
+    // 處理 Redirect 回來的結果
     this.handleRedirectResult();
+
+    console.log("3. 開始監聽登入狀態...");
     onAuthStateChanged(this.auth, (user) => {
+      console.log("4. Firebase 狀態改變! 使用者:", user ? user.email : "未登入");
+      
       this.currentUser = user;
       authState.user = user;
-      this.toggleScreens(!!user);
+      this.toggleScreens(!!user); // 切換畫面
+
       if (user) {
         this.showMessage("");
         this.loadSettings({ silent: true });
