@@ -170,6 +170,11 @@
     </div>
 
     <div id="app" class="pb-safe min-h-screen hidden"></div>
+    <div id="app-error" class="hidden fixed inset-0 bg-white dark:bg-slate-900 text-red-600 flex flex-col items-center justify-center p-6 text-center z-50">
+        <div class="text-xl font-bold mb-2">載入失敗</div>
+        <div class="text-sm text-slate-600 dark:text-slate-300" id="app-error-text"></div>
+        <button onclick="location.reload()" class="mt-4 px-4 py-2 rounded-lg bg-slate-900 text-white">重新整理</button>
+    </div>
 
     <!-- Modals Overlay -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 opacity-0 transition-opacity duration-200" onclick="ui.closeModal()">
@@ -727,7 +732,10 @@ END:VCALENDAR`;
                 store.init().then(() => {
                     this.render();
                     if (!store.data.vehicles.length) this.openAddVehicle();
-                }).catch(err => console.error("DB Init Failed", err));
+                }).catch(err => {
+                    console.error("DB Init Failed", err);
+                    this.showFatal('無法開啟離線資料庫，請確認瀏覽器允許儲存空間或停用隱私瀏覽後再試。');
+                });
             },
 
             render() {
@@ -764,6 +772,13 @@ END:VCALENDAR`;
                     ${this.renderBottomNav(page)}
                 `;
                 window.scrollTo(0, scrollY);
+            },
+
+            showFatal(msg) {
+                const box = document.getElementById('app-error');
+                const text = document.getElementById('app-error-text');
+                if (text) text.textContent = msg;
+                if (box) box.classList.remove('hidden');
             },
             
             renderNoVehicleState() {

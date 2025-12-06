@@ -5,6 +5,8 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   onAuthStateChanged,
   sendEmailVerification,
@@ -47,6 +49,7 @@ const authManager = {
 
   init() {
     this.bindUI();
+    this.handleRedirectResult();
     onAuthStateChanged(this.auth, (user) => {
       this.currentUser = user;
       authState.user = user;
@@ -61,6 +64,18 @@ const authManager = {
         this.clearAppView();
       }
     });
+  },
+
+  async handleRedirectResult() {
+    try {
+      const res = await getRedirectResult(this.auth);
+      if (res?.user) {
+        this.currentUser = res.user;
+        this.showMessage("已使用 Google 登入", false);
+      }
+    } catch (err) {
+      console.warn("redirect login failed", err);
+    }
   },
 
   bindUI() {
@@ -154,11 +169,16 @@ const authManager = {
 
   async handleGoogle() {
     if (this.loading) return;
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     try {
       this.setLoading(true);
-      await signInWithPopup(this.auth, this.provider);
-      this.showMessage("已使用 Google 登入", false);
-      this.checkEmailVerification();
+      if (isStandalone) {
+        await signInWithRedirect(this.auth, this.provider);
+      } else {
+        await signInWithPopup(this.auth, this.provider);
+        this.showMessage("已使用 Google 登入", false);
+        this.checkEmailVerification();
+      }
     } catch (err) {
       this.showMessage(err?.message || "Google 登入失敗");
     } finally {
