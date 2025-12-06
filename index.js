@@ -168,21 +168,35 @@ const authManager = {
   },
 
   async handleLogin() {
-    if (this.loading) return;
-    const email = document.getElementById("login-email")?.value?.trim();
-    const password = document.getElementById("login-password")?.value;
-    if (!email || !password) {
-      this.showMessage("請輸入 Email 與密碼");
+    console.log("--- 1. 登入按鈕被點擊 ---"); // <--- 偵錯點 A
+    if (this.loading) {
+      console.warn("登入已被跳過：系統正在處理中。");
       return;
     }
+    const email = document.getElementById("login-email")?.value?.trim();
+    const password = document.getElementById("login-password")?.value;
+    
+    if (!email || !password) {
+      this.showMessage("請輸入 Email 與密碼");
+      console.error("--- 2. 登入被阻擋：Email 或密碼為空。 ---"); // <--- 偵錯點 B
+      return;
+    }
+    
     try {
+      console.log("--- 3. 欄位檢查成功，準備載入 ---"); // <--- 偵錯點 C
       this.setLoading(true);
-      // 確保登入時也使用正確的持久性設定
+      
+      // 確保登入時也使用正確的持久性設定 (不變)
       await setPersistence(this.auth, browserLocalPersistence);
+      
+      console.log("--- 4. 發送 Firebase 登入請求 ---"); // <--- 偵錯點 D
       await signInWithEmailAndPassword(this.auth, email, password);
+      
       this.showMessage("登入成功", false);
       this.checkEmailVerification();
+      
     } catch (err) {
+      console.error("--- 5. 登入失敗！錯誤訊息：", err); // <--- 偵錯點 E
       this.showMessage(err?.message || "登入失敗");
     } finally {
       this.setLoading(false);
