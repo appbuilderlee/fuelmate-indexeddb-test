@@ -2003,6 +2003,11 @@ END:VCALENDAR`;
             }
         };
 
+        // --- 👇 加入這兩行，讓 index.js 能讀取到 UI 模組 ---
+        window.ui = ui;
+        window.router = router;
+        // ----------------------------------------------
+
         window.addEventListener('DOMContentLoaded', () => ui.init());
         
         if ('serviceWorker' in navigator) {
