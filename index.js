@@ -384,7 +384,9 @@ const authManager = {
     }
   },
 
-  async syncDownload() {
+  async syncDownload() { // 確保這裡有 async
+    console.log("--- 1. 開始下載同步請求 ---"); // <-- 偵錯檢查點
+
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
       return;
@@ -395,11 +397,15 @@ const authManager = {
     }
     try {
       this.setLoading(true); 
+      
+      console.log("--- 2. 發送 Firestore 讀取請求 ---"); // <-- 偵錯檢查點
       const snap = await getDoc(doc(this.db, "userData", this.currentUser.uid));
+      
       if (!snap.exists()) {
         this.showMessage("雲端尚無資料，請先上傳", true);
         return;
       }
+      
       const data = snap.data();
       await window.store.importData({
         vehicles: data.vehicles || [],
