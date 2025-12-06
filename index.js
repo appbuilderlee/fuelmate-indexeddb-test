@@ -330,6 +330,8 @@ const authManager = {
     if (prefInput) prefInput.value = this.cloudState.preferences || "";
   },
 
+  // (接續 fillCloudForm 函式之後)
+
   async saveSettings() {
     if (!this.currentUser) {
       this.showMessage("請先登入後再儲存");
@@ -349,7 +351,9 @@ const authManager = {
     }
   },
 
- async syncUpload() {
+ async syncUpload() { // <--- 確保結構是正確的函式定義
+    console.log("--- 1. 開始上傳同步請求 ---"); // <-- 偵錯檢查點
+
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
       return;
@@ -383,6 +387,7 @@ const authManager = {
       this.setLoading(false); 
     }
   },
+// (之後是 async syncDownload() 函式的開頭)
 
   async syncDownload() { // 確保這裡有 async
     console.log("--- 1. 開始下載同步請求 ---"); // <-- 偵錯檢查點
