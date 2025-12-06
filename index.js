@@ -380,13 +380,18 @@ const authManager = {
       this.syncMeta = { updatedAt: payload.updatedAt };
       this.showMessage("已上傳並同步雲端", false);
       if (window.ui) window.ui.render();
+// ... (authManager.syncUpload 函式內，找到 catch 區塊)
+
     } catch (err) {
-      console.error("Firestore Sync Upload Error:", err); 
-      this.showMessage(err?.message || "上傳同步失敗");
+      // --- 關鍵修改：輸出完整錯誤物件 ---
+      console.error("🔥 Firestore Sync Upload CRITICAL Error:", err); 
+      // 顯示錯誤類型，而非僅僅是 message
+      this.showMessage(err?.name || err?.code || "上傳同步失敗 (請查看 Console)", true); 
     } finally {
       this.setLoading(false); 
     }
   },
+// ...
 // (之後是 async syncDownload() 函式的開頭)
 
   async syncDownload() { // 確保這裡有 async
