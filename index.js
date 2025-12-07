@@ -56,6 +56,26 @@ const authManager = {
     el.classList.toggle("text-[11px]", true);
   },
 
+  async ensureStoreReady() {
+    if (window.store && window.store.db) return true;
+    if (window.store && typeof window.store.init === "function") {
+      try {
+        this.showMessage("正在初始化本機資料…", false);
+        await window.store.init();
+        await window.store.loadAllData?.();
+        return true;
+      } catch (err) {
+        console.error("Store init failed inside sync:", err);
+        this.showMessage("本機資料庫無法初始化，請重新整理或停用私密模式", true);
+        this.setSyncStatus("本機資料庫無法初始化", true);
+        return false;
+      }
+    }
+    this.showMessage("本機資料尚未就緒", true);
+    this.setSyncStatus("本機資料尚未就緒", true);
+    return false;
+  },
+
   async init() {
     console.log("1. 應用程式啟動..."); 
     this.bindUI();
@@ -374,11 +394,7 @@ const authManager = {
       this.setSyncStatus("請先登入後再同步", true);
       return;
     }
-    if (!window.store) {
-      this.showMessage("本機資料尚未就緒");
-      this.setSyncStatus("本機資料尚未就緒", true);
-      return;
-    }
+    if (!(await this.ensureStoreReady())) return;
     try {
       this.setLoading(true); 
       
@@ -423,11 +439,7 @@ const authManager = {
       this.setSyncStatus("請先登入後再同步", true);
       return;
     }
-    if (!window.store) {
-      this.showMessage("本機資料尚未就緒");
-      this.setSyncStatus("本機資料尚未就緒", true);
-      return;
-    }
+    if (!(await this.ensureStoreReady())) return;
     try {
       this.setLoading(true); 
       
