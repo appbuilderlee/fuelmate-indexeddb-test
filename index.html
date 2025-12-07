@@ -772,6 +772,16 @@ END:VCALENDAR`;
                     ${this.renderBottomNav(page)}
                 `;
                 window.scrollTo(0, scrollY);
+
+                // 同步狀態刷新，確保重新 render 後也顯示正確
+                if (window.authManager) {
+                    const meta = window.authManager.syncMeta || {};
+                    if (meta.updatedAt) {
+                        window.authManager.setSyncStatus(`雲端同步時間：${new Date(meta.updatedAt).toLocaleString()}`);
+                    } else {
+                        window.authManager.setSyncStatus("雲端同步時間：尚未同步");
+                    }
+                }
             },
 
             showFatal(msg) {

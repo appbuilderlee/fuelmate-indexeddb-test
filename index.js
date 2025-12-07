@@ -53,15 +53,7 @@ const authManager = {
     if (!el) return;
     el.textContent = message;
     el.classList.toggle("text-red-600", isError);
-    el.classList.toggle("text-blue-600", !isError);
-  },
-  setSyncStatus(message, isError = false) {
-    const el = document.getElementById("cloud-sync-status");
-    if (el) {
-      el.textContent = message;
-      el.classList.toggle("text-red-600", isError);
-      el.classList.toggle("text-[11px]", true);
-    }
+    el.classList.toggle("text-[11px]", true);
   },
 
   async init() {
@@ -89,6 +81,13 @@ const authManager = {
         this.showMessage("");
         this.loadSettings({ silent: true });
         this.checkEmailVerification();
+        // 更新同步狀態文字（如果有既有的 syncMeta）
+        if (this.syncMeta?.updatedAt) {
+          const timeText = new Date(this.syncMeta.updatedAt).toLocaleString();
+          this.setSyncStatus(`雲端同步時間：${timeText}`);
+        } else {
+          this.setSyncStatus("雲端同步時間：尚未同步");
+        }
         if (window.ui) window.ui.render();
       } else {
         this.cloudState = { userName: "", preferences: "", updatedAt: null };
