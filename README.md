@@ -19,12 +19,13 @@ View your app in AI Studio: https://ai.studio/apps/drive/1c_Lv-XlGBGYCJyu0tLCdXp
 3. Run the app:
    `npm run dev`
 
-儲存邏輯概要
+## App Architecture & Sync
 
-本機為主：IndexedDB：資料模型 store.data = { vehicles, logs, settings }，透過 objectStore vehicles / logs / settings（key global）維持，操作方法在 index.html 內的 store 物件（open, runTransaction, add/update/delete, import/export）。初始化會嘗試從 localStorage 舊資料遷移，再讀入 IndexedDB。
-UI 存取：ui 直接讀寫 store.data，新增/編輯紀錄後寫回 IndexedDB；匯出/匯入（JSON、CSV）仍是本機操作。
-雲端設定 (Profile fields)：userSettings/{uid} 存 { userName, preferences, updatedAt }，API 在 index.js 的 authManager.loadSettings/saveSettings。
-手動同步資料集：userData/{uid} 存本機完整資料 { vehicles, logs, settings, updatedAt }，需使用者手動觸發：
-上傳：authManager.syncUpload() → 將目前 store.data merge 至 Firestore。
-下載：authManager.syncDownload() → 讀 Firestore 覆寫本機資料（透過 store.importData + store.loadAllData），再重新渲染。
-驗證/登入保護：未登入不渲染主頁；註冊後寄驗證信，登入/Google 登入會檢查 emailVerified 並提示未驗證狀態。忘記密碼按鈕寄送 reset email。
+- Frontend shell: `index.html`（UI + IndexedDB 資料層） + `index.js`（Firebase Auth + Firestore + 同步）。純瀏覽器 PWA，無 bundler。
+- Auth: Firebase CDN (email/password、Google popup/redirect)。註冊後自動寄送驗證信；未登入不渲染主畫面；忘記密碼按鈕寄送重設信。
+- Local storage: IndexedDB (`store.data = { vehicles, logs, settings }`)，objectStores: `vehicles` / `logs` / `settings(global)`；初始化會搬移舊 localStorage，再載入資料。
+- Cloud settings: Firestore `userSettings/{uid}`，欄位 `{ userName, preferences, updatedAt }`。操作在 `authManager.loadSettings/saveSettings`。
+- Manual data sync: Firestore `userData/{uid}`，存整包本機資料 `{ vehicles, logs, settings, updatedAt }`。設定頁按鈕：
+  - 上傳：`authManager.syncUpload()` 將 `store.data` merge 至雲端並更新同步時間。
+  - 下載：`authManager.syncDownload()` 讀雲端並覆寫本機（透過 `store.importData` + `store.loadAllData`），再重新渲染。
+- PWA: 動態 manifest + service worker（若存在），支援加入主畫面；未登入時僅顯示登入/註冊畫面。
