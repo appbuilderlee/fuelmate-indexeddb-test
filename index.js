@@ -48,6 +48,21 @@ const authManager = {
   cloudState: { userName: "", preferences: "", updatedAt: null },
   syncMeta: { updatedAt: null },
   loading: false,
+  setSyncStatus(message, isError = false) {
+    const el = document.getElementById("cloud-sync-status");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.toggle("text-red-600", isError);
+    el.classList.toggle("text-blue-600", !isError);
+  },
+  setSyncStatus(message, isError = false) {
+    const el = document.getElementById("cloud-sync-status");
+    if (el) {
+      el.textContent = message;
+      el.classList.toggle("text-red-600", isError);
+      el.classList.toggle("text-[11px]", true);
+    }
+  },
 
   async init() {
     console.log("1. 應用程式啟動..."); 
@@ -353,13 +368,16 @@ const authManager = {
 
  async syncUpload() {
     console.log("--- 1. 開始上傳同步請求 ---");
+    this.setSyncStatus("雲端同步中（上傳）...");
 
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
+      this.setSyncStatus("請先登入後再同步", true);
       return;
     }
     if (!window.store) {
       this.showMessage("本機資料尚未就緒");
+      this.setSyncStatus("本機資料尚未就緒", true);
       return;
     }
     try {
@@ -381,12 +399,15 @@ const authManager = {
       console.log("--- 3. Firestore 寫入成功！---"); // <-- 關鍵檢查點
 
       this.syncMeta = { updatedAt: payload.updatedAt };
+      const timeText = new Date(payload.updatedAt).toLocaleString();
+      this.setSyncStatus(`雲端同步時間：${timeText}`);
       this.showMessage("已上傳並同步雲端", false);
       if (window.ui) window.ui.render();
     } catch (err) {
       // 確保顯示出完整的錯誤堆棧
       console.error("🔥 Firestore Sync Upload CRITICAL Error:", err.code || err.name, err); 
       this.showMessage(err?.message || "上傳同步失敗 (請查看 Console)", true); 
+      this.setSyncStatus(err?.message || "上傳同步失敗", true);
     } finally {
       this.setLoading(false); 
     }
@@ -396,13 +417,16 @@ const authManager = {
 
   async syncDownload() { // 確保這裡有 async
     console.log("--- 1. 開始下載同步請求 ---"); // <-- 偵錯檢查點
+    this.setSyncStatus("雲端同步中（下載）...");
 
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
+      this.setSyncStatus("請先登入後再同步", true);
       return;
     }
     if (!window.store) {
       this.showMessage("本機資料尚未就緒");
+      this.setSyncStatus("本機資料尚未就緒", true);
       return;
     }
     try {
@@ -424,11 +448,14 @@ const authManager = {
       });
       await window.store.loadAllData();
       this.syncMeta = { updatedAt: data.updatedAt || Date.now() };
+      const timeText = new Date(this.syncMeta.updatedAt).toLocaleString();
+      this.setSyncStatus(`雲端同步時間：${timeText}`);
       this.showMessage("已從雲端下載並同步", false);
       if (window.ui) window.ui.render();
     } catch (err) {
       console.error("Firestore Sync Download Error:", err); 
       this.showMessage(err?.message || "下載同步失敗");
+      this.setSyncStatus(err?.message || "下載同步失敗", true);
     } finally {
       this.setLoading(false); 
     }
