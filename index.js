@@ -351,8 +351,8 @@ const authManager = {
     }
   },
 
- async syncUpload() { // <--- 確保結構是正確的函式定義
-    console.log("--- 1. 開始上傳同步請求 ---"); // <-- 偵錯檢查點
+ async syncUpload() {
+    console.log("--- 1. 開始上傳同步請求 ---");
 
     if (!this.currentUser) {
       this.showMessage("請先登入後再同步");
@@ -365,7 +365,6 @@ const authManager = {
     try {
       this.setLoading(true); 
       
-      // 修復：關鍵的資料清洗步驟，解決序列化錯誤
       const cleanData = JSON.parse(JSON.stringify(window.store.data)); 
 
       const payload = {
@@ -375,18 +374,19 @@ const authManager = {
         updatedAt: Date.now()
       };
       
+      console.log("--- 2. 資料清洗完成，發送請求 ---"); // <-- 新增檢查點
+      
       await setDoc(doc(this.db, "userData", this.currentUser.uid), payload, { merge: true });
       
+      console.log("--- 3. Firestore 寫入成功！---"); // <-- 關鍵檢查點
+
       this.syncMeta = { updatedAt: payload.updatedAt };
       this.showMessage("已上傳並同步雲端", false);
       if (window.ui) window.ui.render();
-// ... (authManager.syncUpload 函式內，找到 catch 區塊)
-
     } catch (err) {
-      // --- 關鍵修改：輸出完整錯誤物件 ---
-      console.error("🔥 Firestore Sync Upload CRITICAL Error:", err); 
-      // 顯示錯誤類型，而非僅僅是 message
-      this.showMessage(err?.name || err?.code || "上傳同步失敗 (請查看 Console)", true); 
+      // 確保顯示出完整的錯誤堆棧
+      console.error("🔥 Firestore Sync Upload CRITICAL Error:", err.code || err.name, err); 
+      this.showMessage(err?.message || "上傳同步失敗 (請查看 Console)", true); 
     } finally {
       this.setLoading(false); 
     }
