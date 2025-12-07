@@ -726,6 +726,10 @@ END:VCALENDAR`;
             }
         };
 
+        // Expose core objects for module scripts (index.js) to consume
+        window.store = store;
+        window.utils = utils;
+
         // --- UI RENDERER ---
         const ui = {
             init() {
