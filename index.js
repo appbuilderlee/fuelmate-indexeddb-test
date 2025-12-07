@@ -57,13 +57,14 @@ const authManager = {
   },
 
   async ensureStoreReady() {
-    if (window.store && window.store.db) return true;
+    // 若已有內存資料，直接通過（即便 IndexedDB 無法初始化，仍允許同步以避免阻塞）
+    if (window.store && window.store.data) return true;
     if (window.store && typeof window.store.init === "function") {
       try {
         this.showMessage("正在初始化本機資料…", false);
         await window.store.init();
         await window.store.loadAllData?.();
-        return true;
+        return !!window.store.data;
       } catch (err) {
         console.error("Store init failed inside sync:", err);
         this.showMessage("本機資料庫無法初始化，請重新整理或停用私密模式", true);
@@ -385,7 +386,7 @@ const authManager = {
     }
   },
 
- async syncUpload() {
+  async syncUpload() {
     console.log("--- 1. 開始上傳同步請求 ---");
     this.setSyncStatus("雲端同步中（上傳）...");
 
@@ -394,7 +395,10 @@ const authManager = {
       this.setSyncStatus("請先登入後再同步", true);
       return;
     }
-    if (!(await this.ensureStoreReady())) return;
+    if (!(await this.ensureStoreReady())) {
+      console.warn("Sync upload aborted: store not ready", window.store);
+      return;
+    }
     try {
       this.setLoading(true); 
       
@@ -439,7 +443,10 @@ const authManager = {
       this.setSyncStatus("請先登入後再同步", true);
       return;
     }
-    if (!(await this.ensureStoreReady())) return;
+    if (!(await this.ensureStoreReady())) {
+      console.warn("Sync download aborted: store not ready", window.store);
+      return;
+    }
     try {
       this.setLoading(true); 
       
